@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MediaThumb } from "@/components/ui/media-thumb";
+import { MediaViewer, PlayOverlay } from "@/components/ui/media-viewer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/ui/copy-button";
 import { EmptyState, ErrorBanner } from "@/components/ui/banner";
@@ -117,9 +118,18 @@ export function ImportUrlForm({ onDone }: { onDone: () => void }) {
 }
 
 function AssetCard({ asset }: { asset: MediaAsset }) {
+  const [viewing, setViewing] = useState(false);
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border border-border bg-elevated">
-      <MediaThumb url={asset.url} kind={asset.kind} alt={assetLabel(asset)} className="aspect-square w-full" />
+      {asset.url ? (
+        <button type="button" onClick={() => setViewing(true)} className="group relative aspect-square w-full cursor-zoom-in" aria-label={asset.kind === "video" ? "Play video" : "View full size"}>
+          <MediaThumb url={asset.url} kind={asset.kind} alt={assetLabel(asset)} className="size-full" />
+          {asset.kind === "video" ? <PlayOverlay /> : null}
+        </button>
+      ) : (
+        <MediaThumb url={asset.url} kind={asset.kind} alt={assetLabel(asset)} className="aspect-square w-full" />
+      )}
+      {asset.url ? <MediaViewer open={viewing} onClose={() => setViewing(false)} items={[{ url: asset.url, kind: asset.kind, alt: assetLabel(asset) }]} caption={assetLabel(asset)} /> : null}
       <div className="flex flex-col gap-1.5 p-2.5">
         <div className="flex items-center justify-between gap-2">
           <Badge>{asset.kind}</Badge>

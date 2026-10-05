@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { aspectRatioStyle, errorText } from "@/components/generations/generation-format";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, Download, Maximize2, Paperclip, RotateCcw } from "lucide-react";
@@ -9,6 +10,7 @@ import { formatRelative, formatUsd, isTerminalState } from "@/lib/client/format"
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { MediaThumb } from "@/components/ui/media-thumb";
+import { MediaViewer, PlayOverlay } from "@/components/ui/media-viewer";
 import { Spinner } from "@/components/ui/spinner";
 import { StateBadge, ProviderBadge } from "@/components/generations/state-badge";
 import { AdjustmentsHint } from "@/components/generations/adjustments-hint";
@@ -41,22 +43,6 @@ export function useLiveGeneration(initial: GenerationView): GenerationView {
   return current;
 }
 
-export function aspectRatioStyle(ratio: string | undefined): string {
-  const match = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(ratio ?? "");
-  return match ? `${match[1]} / ${match[2]}` : "1 / 1";
-}
-
-export function errorText(error: unknown): string | null {
-  if (!error) return null;
-  if (typeof error === "string") return error;
-  if (typeof error === "object" && error && "message" in error && typeof (error as { message: unknown }).message === "string") return (error as { message: string }).message;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "Failed";
-  }
-}
-
 export function GenerationCard({ generation: initial, onReuse, onUseAsReference }: GenerationCardProps) {
   const queryClient = useQueryClient();
   const gen = useLiveGeneration(initial);
@@ -75,17 +61,24 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
   const primary = outputs[0];
   const cost = gen.cost_actual_usd ?? gen.cost_estimate_usd;
   const failure = errorText(gen.error);
+  const [viewer, setViewer] = useState<number | null>(null);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-lg border border-border bg-elevated transition-colors hover:border-border-strong" aria-label={`Generation ${gen.model_id}`}>
       <div className="relative w-full overflow-hidden bg-bg" style={{ aspectRatio: aspectRatioStyle(request.aspect_ratio) }}>
         {gen.state === "succeeded" && primary ? (
           outputs.length === 1 ? (
-            <MediaThumb url={primary.url} kind={primary.kind} alt={prompt.slice(0, 80)} className="absolute inset-0 size-full" />
+            <button type="button" onClick={() => setViewer(0)} className="absolute inset-0 size-full cursor-zoom-in" aria-label={primary.kind === "video" ? "Play video" : "View full size"}>
+              <MediaThumb url={primary.url} kind={primary.kind} alt={prompt.slice(0, 80)} className="size-full" />
+              {primary.kind === "video" ? <PlayOverlay /> : null}
+            </button>
           ) : (
             <div className={cn("absolute inset-0 grid gap-px bg-border", outputs.length === 2 ? "grid-cols-2" : "grid-cols-2 grid-rows-2")}>
-              {outputs.slice(0, 4).map((o) => (
-                <MediaThumb key={o.index} url={o.url} kind={o.kind} alt={`${prompt.slice(0, 60)} (${o.index + 1})`} className="size-full" />
+              {outputs.slice(0, 4).map((o, i) => (
+                <button key={o.index} type="button" onClick={() => setViewer(i)} className="relative size-full cursor-zoom-in" aria-label={o.kind === "video" ? `Play video ${i + 1}` : `View output ${i + 1} full size`}>
+                  <MediaThumb url={o.url} kind={o.kind} alt={`${prompt.slice(0, 60)} (${o.index + 1})`} className="size-full" />
+                  {o.kind === "video" ? <PlayOverlay /> : null}
+                </button>
               ))}
             </div>
           )
@@ -157,6 +150,14 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
           </Link>
         </div>
       </div>
+      <MediaViewer
+        open={viewer !== null}
+        onClose={() => setViewer(null)}
+        items={outputs.map((o) => ({ url: o.url as string, kind: o.kind, alt: prompt.slice(0, 80) }))}
+        startIndex={viewer ?? 0}
+        caption={prompt}
+        detailsHref={`/generations/${gen.id}`}
+      />
     </article>
   );
 }

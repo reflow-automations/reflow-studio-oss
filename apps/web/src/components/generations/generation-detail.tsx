@@ -6,7 +6,7 @@ import { MediaThumb } from "@/components/ui/media-thumb";
 import { Badge } from "@/components/ui/badge";
 import { StateBadge, ProviderBadge } from "@/components/generations/state-badge";
 import { AdjustmentsHint, asAdjustments } from "@/components/generations/adjustments-hint";
-import { aspectRatioStyle, errorText } from "@/components/generations/generation-card";
+import { aspectRatioStyle, errorText } from "@/components/generations/generation-format";
 import { AutoRefresh, RerunButton } from "@/components/generations/generation-detail-actions";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -53,7 +53,7 @@ export function GenerationDetail({ generation: gen }: { generation: GenerationVi
           ) : (
             gen.outputs.map((o) => (
               <figure key={o.index} className="overflow-hidden rounded-lg border border-border bg-elevated">
-                <MediaThumb url={o.url} kind={o.kind} controls alt={`${request.prompt?.slice(0, 80) ?? "output"} (${o.index + 1})`} className="max-h-[75vh] w-full" />
+                <MediaThumb url={o.url} kind={o.kind} controls fit="contain" alt={`${request.prompt?.slice(0, 80) ?? "output"} (${o.index + 1})`} className="max-h-[75vh] w-full" />
                 <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted">
                   <span className="font-mono">
                     #{o.index + 1} · {o.kind}
