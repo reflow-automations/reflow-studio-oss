@@ -1,0 +1,58 @@
+{
+  "name": "@reflow/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Provider-agnostic core of Reflow Studio: model catalog, fal.ai / Kie.ai / Higgsfield API adapters, an offline mock provider, request normalisation, cost estimation and routing.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reflow-automations/reflow-studio-oss.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "ai",
+    "image-generation",
+    "video-generation",
+    "model-catalog",
+    "fal-ai",
+    "kie-ai",
+    "higgsfield",
+    "provider-router",
+    "self-hosted"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog/index.ts",
+    "./catalog/models": "./src/catalog/models/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./providers/fal": "./src/providers/fal/index.ts",
+    "./providers/kie": "./src/providers/kie/index.ts",
+    "./providers/higgsfield": "./src/providers/higgsfield/index.ts",
+    "./providers/mock": "./src/providers/mock/index.ts",
+    "./router": "./src/router/index.ts",
+    "./cost": "./src/cost/index.ts",
+    "./jobs": "./src/jobs/index.ts",
+    "./util": "./src/util/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src test scripts",
+    "catalog:verify": "tsx scripts/verify-catalog.ts verify",
+    "catalog:prices": "tsx scripts/verify-catalog.ts prices"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^5.0.0"
+  }
+}

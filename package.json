@@ -1,0 +1,44 @@
+{
+  "name": "reflow-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted AI media studio (web app + REST API + remote MCP server) on top of fal.ai, Kie.ai and other providers.",
+  "license": "MIT",
+  "author": "Reflow Automations",
+  "homepage": "https://github.com/reflow-automations/reflow-studio-oss#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reflow-automations/reflow-studio-oss.git"
+  },
+  "bugs": {
+    "url": "https://github.com/reflow-automations/reflow-studio-oss/issues"
+  },
+  "keywords": [
+    "ai",
+    "generative-ai",
+    "image-generation",
+    "video-generation",
+    "mcp",
+    "mcp-server",
+    "nextjs",
+    "supabase",
+    "fal-ai",
+    "kie-ai",
+    "self-hosted",
+    "byok"
+  ],
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "check": "pnpm typecheck && pnpm test && pnpm lint",
+    "check:public": "node scripts/check-public.mjs",
+    "export:public": "node scripts/export-public.mjs"
+  }
+}

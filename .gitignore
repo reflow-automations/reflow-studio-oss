@@ -1,0 +1,56 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# build output
+.next/
+out/
+build/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+
+# env files (never commit secrets)
+.env
+.env.*
+!.env.example
+supabase/.env
+
+# vercel / supabase local state
+.vercel
+supabase/.temp
+supabase/.branches
+
+# AI coding agents: local settings and private notes stay on your machine
+.claude/settings.local.json
+.claude/*.local.*
+CLAUDE.local.md
+AGENTS.local.md
+.codex/
+.cursor/
+.aider*
+*.local.json
+*.local.md
+
+# editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# scratch space
+/scratch/
+/.scratch/
+/tmp/
+
+# misc
+.DS_Store
+Thumbs.db
+*.pem
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

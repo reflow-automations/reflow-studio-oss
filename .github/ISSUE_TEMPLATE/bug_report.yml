@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in Reflow Studio does not work the way the docs say it should.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Before you paste logs or screenshots, remove every secret:** fal.ai, Kie.ai and Higgsfield keys, `rfl_` API keys, Supabase keys, signed storage URLs and webhook tokens (`?t=...`). Security problems go to a [private report](https://github.com/reflow-automations/reflow-studio-oss/security/advisories/new), not to an issue. Setup questions fit better in [Discussions](https://github.com/reflow-automations/reflow-studio-oss/discussions/categories/q-a).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Create and pick the model ...
+        2. Add a reference image ...
+        3. Click Generate ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag, or the commit your deployment runs (Vercel shows it on the deployment page).
+      placeholder: v0.1.0 or 1a2b3c4
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Where does it run?
+      options:
+        - Vercel
+        - Local (pnpm dev)
+        - Other (describe it in the report)
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which part is affected?
+      multiple: true
+      options:
+        - Web app
+        - REST API
+        - MCP server
+        - Setup or deployment
+        - Database or migrations
+        - Storage (Cloudflare R2 or Supabase)
+        - Costs or budget
+  - type: input
+    id: provider-model
+    attributes:
+      label: Provider and model
+      description: For generation problems only, for example "fal / <model id>". Leave it empty otherwise.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error messages
+      description: Vercel function logs, the browser console or your MCP client's output. Remove keys, tokens and signed URLs first.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues and discussions.
+          required: true
+        - label: This report contains no keys, tokens, signed URLs or personal data.
+          required: true

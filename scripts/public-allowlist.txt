@@ -1,0 +1,17 @@
+# Allowlist for scripts/check-public.mjs: published test vectors and documentation examples
+# that look like secrets but are not.
+#
+# One value per line. A plain line allows a hit whose matched value is exactly this text.
+# "re:<regex>" allows every matched value the regex matches (use sparingly, anchor it).
+# Never add a real key here: rotate it at the provider and remove it from the tree instead.
+
+# FIPS 180-2 SHA-256 test vectors (packages/core/test/util.test.ts)
+ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+# RFC 4231 HMAC-SHA256 test case 2 (packages/core/test/util.test.ts)
+5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
+
+# AWS documentation example access key ids (apps/web/test/storage.r2.test.ts uses AKIAEXAMPLE)
+AKIAEXAMPLE
+AKIAIOSFODNN7EXAMPLE

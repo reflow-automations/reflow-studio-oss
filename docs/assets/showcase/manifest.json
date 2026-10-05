@@ -1,0 +1,15 @@
+{
+  "note": "Sample outputs generated on 2026-10-04 with the owner's Reflow Studio for the offline demo and README screenshots. AI-generated images.",
+  "items": [
+    {"file": "mug.webp", "model": "soul_2_api", "aspect_ratio": "4:3", "width": 1280, "height": 960, "prompt": "Cinematic product photo of a matte black ceramic coffee mug on a warm oak table, morning light through a window, soft shadows, shallow depth of field"},
+    {"file": "canal-portrait.webp", "model": "soul_2_api", "aspect_ratio": "3:4", "width": 960, "height": 1280, "prompt": "Editorial fashion portrait of a woman in an orange wool coat on a rainy Amsterdam canal bridge at dusk, neon reflections on wet cobblestones, 35mm film look"},
+    {"file": "tulip-fields.webp", "model": "soul_2_api", "aspect_ratio": "16:9", "width": 1280, "height": 725, "prompt": "Wide aerial shot of Dutch tulip fields in vivid stripes of red, yellow and purple with a windmill at sunrise, light mist, ultra detailed landscape photography"},
+    {"file": "holo-workspace.webp", "model": "soul_2_api", "aspect_ratio": "16:9", "width": 1280, "height": 725, "prompt": "Futuristic minimalist workspace with a glowing holographic dashboard above a white desk, soft orange accent lights, clean architecture, night city view through floor to ceiling windows"},
+    {"file": "latte-art.webp", "model": "soul_2_api", "aspect_ratio": "9:16", "width": 725, "height": 1280, "prompt": "Close up of a barista pouring latte art into a cup, steam rising, warm cafe ambience, bokeh lights, commercial food photography"},
+    {"file": "skateboarder.webp", "model": "soul_2_api", "aspect_ratio": "2:3", "width": 853, "height": 1280, "prompt": "Skateboarder mid air over a concrete bowl at golden hour, dynamic low angle, motion energy, sports photography, sun flare"},
+    {"file": "floating-island.webp", "model": "z_image_turbo", "aspect_ratio": "1:1", "width": 1024, "height": 1024, "prompt": "Isometric illustration of a tiny floating island city with waterfalls, pastel colors, clean vector style"},
+    {"file": "greenhouse-robot.webp", "model": "z_image_turbo", "aspect_ratio": "1:1", "width": 1024, "height": 1024, "prompt": "A friendly orange robot watering plants in a cozy greenhouse, soft 3D render, Pixar style lighting"},
+    {"file": "perfume.webp", "model": "z_image_turbo", "aspect_ratio": "3:4", "width": 864, "height": 1152, "prompt": "Luxury perfume bottle on black volcanic rock with splashing water, dramatic studio lighting, high end advertising photo"},
+    {"file": "rocket-poster.webp", "model": "z_image_turbo", "aspect_ratio": "9:16", "width": 720, "height": 1280, "prompt": "Retro sci-fi poster of a rocket launching from a desert canyon at night, bold colors, grainy print texture, no text"}
+  ]
+}

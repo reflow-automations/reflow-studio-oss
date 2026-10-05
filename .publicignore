@@ -1,0 +1,29 @@
+# Paths that never leave the private repository.
+#
+# scripts/export-public.mjs drops every tracked file matched here before it writes the
+# public tree, and scripts/check-public.mjs skips the same paths when it scans this
+# repository. Syntax follows .gitignore: "dir/" matches a directory, "*" and "**" are
+# globs, "!" re-includes a file (but never a file inside an excluded directory).
+# The leak gate still runs on every export, so a missed file fails loudly instead of leaking.
+
+# Owner-only docs, research captures and the gate's identifier list
+docs/private/
+
+# Agent-local and editor-local files (normally git-ignored as well)
+CLAUDE.local.md
+AGENTS.local.md
+.claude/settings.local.json
+.claude/*.local.*
+.codex/
+.cursor/
+.aider*
+*.local.json
+*.local.md
+
+# Scratch and tool state
+/scratch/
+/.scratch/
+/tmp/
+supabase/.temp/
+supabase/.branches/
+.vercel/

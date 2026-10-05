@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help with your instance
+    url: https://github.com/reflow-automations/reflow-studio-oss/discussions/categories/q-a
+    about: Ask setup and usage questions in Discussions, so the answers help the next person too.
+  - name: Show what you made
+    url: https://github.com/reflow-automations/reflow-studio-oss/discussions/categories/show-and-tell
+    about: Share generations, workflows and competition entries.
+  - name: Report a security vulnerability
+    url: https://github.com/reflow-automations/reflow-studio-oss/security/advisories/new
+    about: Report security problems privately. Never in a public issue.

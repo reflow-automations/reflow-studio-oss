@@ -1,0 +1,69 @@
+name: Model request
+description: Ask for a model (or a provider for an existing model) to be added to the catalog.
+title: "[Model]: "
+labels: ["enhancement", "catalog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Models are data in `packages/core/src/catalog/models/`, so adding one rarely needs new code. If you want to add it yourself, follow "Adding a model" in [CONTRIBUTING.md](https://github.com/reflow-automations/reflow-studio-oss/blob/main/CONTRIBUTING.md).
+  - type: input
+    id: model
+    attributes:
+      label: Model name
+      placeholder: For example "Kling 3.0 image-to-video"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      description: Where can the model be called with an API key? Pick every provider you know of.
+      multiple: true
+      options:
+        - fal.ai
+        - Kie.ai
+        - Higgsfield API
+        - Another provider (name it below)
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: Endpoint id or model slug
+      description: The fal endpoint id, the Kie model slug or the Higgsfield model id, if you know it.
+  - type: input
+    id: docs-url
+    attributes:
+      label: API documentation
+      description: A link to the provider's API page for this model.
+    validations:
+      required: true
+  - type: input
+    id: pricing-url
+    attributes:
+      label: Pricing
+      description: A link to the price for this model, so the cost estimate can cite a source.
+  - type: checkboxes
+    id: modes
+    attributes:
+      label: Modes
+      options:
+        - label: Text to image
+        - label: Image to image or editing
+        - label: Text to video
+        - label: Image to video
+        - label: Video to video
+        - label: Upscale or other utility
+        - label: Audio or speech
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Parameters that matter, reference image roles, known limits, why you want this model.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to open the pull request for this model myself.

@@ -1,0 +1,35 @@
+# Hashed owner identifiers for scripts/check-public.mjs. Generated, do not edit by hand.
+#
+# The plain-text list stays in the private repository. This file carries only truncated
+# SHA-256 hashes of its literal entries, so the public repository and its CI keep catching
+# those identifiers without publishing them. Regex entries are not hashed.
+#
+# Format: <hash> <first-token-hash> <token-count>. An identifier is normalised to its
+# lowercase ASCII letter and digit runs joined by one space ("Foo-Bar.example" becomes
+# "foo bar example"); a hash is the first 16 hex characters of its SHA-256.
+#
+# Regenerate after editing the plain-text list:
+#   node scripts/check-public.mjs --write-identifier-hashes
+
+12834e32913081d7 5fde57db9bba0084 2
+1ce2a2cfeb2883d2 5fde57db9bba0084 2
+2077248d867d4c88 ca868dc557037f0c 2
+32e998835cde750d 32e998835cde750d 1
+3959028e3094d6e8 a457e8f04aa796dc 2
+51a99c57d3a0813d 171cd9969103f91b 2
+5644f18573713878 5fde57db9bba0084 4
+60048b225e74bd40 636396f02b6571e4 3
+664a561113fd2b1f 25fc0e7096fc6537 4
+6a5ce5c51c8f80b2 5fde57db9bba0084 3
+752c5fb3f6b545c0 a457e8f04aa796dc 2
+8d2e8d72251d6b16 8d2e8d72251d6b16 1
+978b11d697ecbdc0 04f8996da763b7a9 2
+a2ec46c889404259 a2ec46c889404259 1
+a4e28070c8eef36f 2998b3232d29e8dc 4
+a52f4479ae83db09 c857d09db23e6822 4
+b2d3330dfc3ad51c b2d3330dfc3ad51c 1
+cc970c3e11cf0d75 cc970c3e11cf0d75 1
+cdede47524e7def3 cdede47524e7def3 1
+e15856131d9a62cf e15856131d9a62cf 1
+f53e2b336aae060f 5fde57db9bba0084 3
+fd127187347b1e0f fd127187347b1e0f 1

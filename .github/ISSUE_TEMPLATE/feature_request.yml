@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an improvement that would help people who run their own Reflow Studio.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Want a new model rather than a feature? Use the **Model request** form instead. Rough ideas that need discussion first fit well in [Discussions](https://github.com/reflow-automations/reflow-studio-oss/discussions/categories/ideas).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Reflow Studio do? Mention the web app, the REST API or the MCP tools where it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Workarounds you use now, or other ways to solve it.
+  - type: dropdown
+    id: cost
+    attributes:
+      label: Does it need extra hosting or a paid service?
+      description: Reflow Studio aims to run on the free tiers of Vercel and Supabase.
+      options:
+        - "No"
+        - "Yes, optional"
+        - "Yes, required"
+        - "Not sure"
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself (see CONTRIBUTING.md).

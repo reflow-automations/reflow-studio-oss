@@ -1,0 +1,33 @@
+# Normalise line endings: LF in the repository and in every checkout, on every OS.
+* text=auto eol=lf
+
+# Files that must never be converted
+*.sql text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.mov binary
+*.mp3 binary
+*.wav binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.glb binary
+
+# GitHub presentation
+pnpm-lock.yaml -diff linguist-generated
+docs/** linguist-documentation
