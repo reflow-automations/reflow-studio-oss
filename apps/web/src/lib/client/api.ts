@@ -109,6 +109,12 @@ export interface MediaResult {
   bytes?: number | null;
 }
 
+/** Result of a bulk delete: ids that are gone, and ids left alone with the reason. */
+export interface DeleteResult {
+  deleted: string[];
+  skipped: Array<{ id: string; reason: string }>;
+}
+
 export interface Balance {
   spent_usd: number;
   reserved_usd: number;
@@ -161,6 +167,8 @@ export const api = {
     get: (id: string) => request<GenerationView>(`/api/v1/generations/${encodeURIComponent(id)}`),
     create: (body: GenerateBody) => request<GenerationView>("/api/v1/generations", { method: "POST", json: body }),
     cancel: (id: string) => request<GenerationView>(`/api/v1/generations/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** Delete finished generations and the media they produced (running ones come back as skipped). */
+    remove: (ids: string[]) => request<DeleteResult>("/api/v1/generations/delete", { method: "POST", json: { ids } }),
     estimate: (body: GenerateBody) => request<EstimateResponse>("/api/v1/estimate", { method: "POST", json: body }),
   },
   media: {
@@ -168,6 +176,8 @@ export const api = {
     createUploadTarget: (input: { filename: string; content_type: string }) => request<UploadTarget>("/api/v1/media", { method: "POST", json: input }),
     confirm: (assetId: string) => request<MediaResult>(`/api/v1/media/${encodeURIComponent(assetId)}/confirm`, { method: "POST" }),
     importUrl: (input: { url: string; type?: "image" | "video" | "audio" }) => request<MediaResult>("/api/v1/media/import", { method: "POST", json: input }),
+    /** Delete assets and their storage objects. */
+    remove: (ids: string[]) => request<DeleteResult>("/api/v1/media/delete", { method: "POST", json: { ids } }),
   },
   balance: () => request<Balance>("/api/v1/balance"),
 };

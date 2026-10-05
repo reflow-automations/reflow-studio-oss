@@ -43,6 +43,8 @@ export class SupabaseStorageBackend implements StorageBackend {
   }
 
   async delete(bucket: string, key: string): Promise<void> {
-    await this.db.storage.from(bucket).remove([key]);
+    // A missing object is not an error (remove() just returns an empty list).
+    const { error } = await this.db.storage.from(bucket).remove([key]);
+    if (error) throw new Error(`Supabase Storage delete failed: ${error.message}`);
   }
 }

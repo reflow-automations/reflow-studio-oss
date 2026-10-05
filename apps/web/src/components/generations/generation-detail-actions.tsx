@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import type { GenerationView } from "@/lib/client/api";
+import { isTerminalState } from "@/lib/client/format";
+import { GENERATION_DELETE_NOTE, useDeleteGenerations } from "@/lib/client/delete";
+import { ConfirmDeleteModal } from "@/components/ui/selection";
 import { useReuseGeneration } from "@/components/library/library-screen";
 import { Button } from "@/components/ui/button";
 
@@ -28,5 +31,26 @@ export function AutoRefresh({ active }: { active: boolean }) {
     <Button variant="outline" onClick={() => router.refresh()}>
       <RefreshCw className="size-3.5" aria-hidden /> Refresh
     </Button>
+  );
+}
+
+/** Delete this generation (after confirmation), then go back to the library. */
+export function DeleteGenerationButton({ generation }: { generation: GenerationView }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState<string[] | null>(null);
+  const remove = useDeleteGenerations({
+    onDeleted: (result) => {
+      setConfirming(null);
+      if (result.deleted.includes(generation.id)) router.push("/library");
+    },
+  });
+  const terminal = isTerminalState(generation.state);
+  return (
+    <>
+      <Button variant="danger" onClick={() => setConfirming([generation.id])} disabled={!terminal} title={terminal ? undefined : "Cancel it first to delete"}>
+        <Trash2 className="size-3.5" aria-hidden /> Delete
+      </Button>
+      <ConfirmDeleteModal ids={confirming} onCancel={() => setConfirming(null)} onConfirm={(ids) => remove.mutate(ids)} pending={remove.isPending} note={GENERATION_DELETE_NOTE} />
+    </>
   );
 }

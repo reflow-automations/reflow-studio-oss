@@ -360,9 +360,11 @@ All routes accept a Supabase session cookie (browser) or `Authorization: Bearer 
 | `GET /api/v1/generations?type=&state=&before=` | History with cursor pagination. |
 | `GET /api/v1/generations/:id` | Details; refreshes from the provider while running. |
 | `DELETE /api/v1/generations/:id` | Cancel. |
+| `POST /api/v1/generations/delete` | Delete `{ ids[] }` (1 to 100) finished generations and the media they produced; running ones are skipped, spend history stays. |
 | `POST /api/v1/generations/wait` | Long-poll `{ ids[], timeout_seconds }` (up to 25 s). |
 | `POST /api/v1/estimate` | Cost preflight. |
 | `GET /api/v1/media?type=&q=` · `POST /api/v1/media` · `POST /api/v1/media/:id/confirm` · `POST /api/v1/media/import` | Assets: list and search, presigned upload, confirm, import from URL. |
+| `POST /api/v1/media/delete` | Delete `{ ids[] }` (1 to 100) assets and their storage objects. |
 | `GET /api/v1/balance` | Ledger totals and provider balances. |
 | `GET /api/v1/status` | Provider key status (hints only), routing preference, storage backend, budget. |
 | `POST /api/webhooks/{fal,kie,higgsfield}` | Provider callbacks (signature and per-job token verified). |

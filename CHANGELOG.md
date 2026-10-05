@@ -20,6 +20,11 @@ Every release starts with a **Needs action when updating** section that lists ev
 
 None yet.
 
+### Added
+
+- Delete generations and assets, one at a time or in bulk. Library, the create feeds and Assets get a **Select** mode (checkboxes, select all, Escape to leave) with a sticky action bar; every card, the media viewer and the generation detail page get a delete button with a confirmation. Deleting a generation also removes the files it produced from your storage, except files another generation still uses as a reference; running generations are skipped until you cancel them. Costs stay in your usage history.
+- REST: `POST /api/v1/generations/delete` and `POST /api/v1/media/delete` with `{ "ids": [...] }` (1 to 100 ids, scope `generate`), returning `{ deleted, skipped: [{ id, reason }] }`.
+
 ## [0.1.0] - 2026-10-05
 
 First public release.

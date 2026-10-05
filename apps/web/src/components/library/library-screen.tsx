@@ -9,6 +9,7 @@ import { useStudioStore } from "@/lib/client/store";
 import { PageHeader } from "@/components/shell/page-header";
 import { Select } from "@/components/ui/input";
 import { GenerationFeed } from "@/components/generations/generation-feed";
+import { SelectToggle, useSelection } from "@/components/ui/selection";
 
 const TYPES: Array<{ value: OutputType | ""; label: string }> = [
   { value: "", label: "All types" },
@@ -48,6 +49,7 @@ export function LibraryScreen() {
   const [type, setType] = useState<OutputType | "">("");
   const [state, setState] = useState<JobState | "">("");
   const reuse = useReuseGeneration();
+  const selection = useSelection();
 
   return (
     <div className="flex flex-col">
@@ -70,11 +72,12 @@ export function LibraryScreen() {
                 </option>
               ))}
             </Select>
+            <SelectToggle selection={selection} />
           </>
         }
       />
       <div className="p-4 sm:p-6">
-        <GenerationFeed filters={{ type: type || undefined, state: state || undefined }} pageSize={36} onReuse={reuse} emptyTitle="No generations match" emptyDescription="Try another filter or create something new." />
+        <GenerationFeed filters={{ type: type || undefined, state: state || undefined }} pageSize={36} onReuse={reuse} selection={selection} emptyTitle="No generations match" emptyDescription="Try another filter or create something new." />
       </div>
     </div>
   );

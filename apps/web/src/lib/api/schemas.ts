@@ -31,6 +31,11 @@ export const waitBodySchema = z.object({
   timeout_seconds: z.number().int().min(0).max(25).optional(),
 });
 
+/** Body of POST /api/v1/generations/delete and /api/v1/media/delete. */
+export const deleteBodySchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+});
+
 export const importMediaSchema = z.object({
   url: z.string().url(),
   type: z.enum(["image", "video", "audio"]).optional(),

@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { aspectRatioStyle, errorText } from "@/components/generations/generation-format";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Download, Maximize2, Paperclip, RotateCcw } from "lucide-react";
+import { Ban, Download, Maximize2, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import { api, errorMessage, type GenerationView } from "@/lib/client/api";
 import { formatRelative, formatUsd, isTerminalState } from "@/lib/client/format";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { MediaThumb } from "@/components/ui/media-thumb";
 import { MediaViewer, PlayOverlay } from "@/components/ui/media-viewer";
+import { SelectOverlay } from "@/components/ui/selection";
 import { Spinner } from "@/components/ui/spinner";
 import { StateBadge, ProviderBadge } from "@/components/generations/state-badge";
 import { AdjustmentsHint } from "@/components/generations/adjustments-hint";
@@ -19,6 +20,12 @@ export interface GenerationCardProps {
   generation: GenerationView;
   onReuse?: (generation: GenerationView) => void;
   onUseAsReference?: (generation: GenerationView) => void;
+  /** Ask to delete this generation (the parent confirms). */
+  onDelete?: (generation: GenerationView) => void;
+  /** Select mode: the card toggles selection instead of opening the viewer. */
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 /** Polls a non-terminal generation every 3 s until it settles. */
@@ -43,7 +50,7 @@ export function useLiveGeneration(initial: GenerationView): GenerationView {
   return current;
 }
 
-export function GenerationCard({ generation: initial, onReuse, onUseAsReference }: GenerationCardProps) {
+export function GenerationCard({ generation: initial, onReuse, onUseAsReference, onDelete, selectMode = false, selected = false, onToggleSelect }: GenerationCardProps) {
   const queryClient = useQueryClient();
   const gen = useLiveGeneration(initial);
   const terminal = isTerminalState(gen.state);
@@ -64,7 +71,8 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
   const [viewer, setViewer] = useState<number | null>(null);
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-lg border border-border bg-elevated transition-colors hover:border-border-strong" aria-label={`Generation ${gen.model_id}`}>
+    <article className={cn("group relative flex flex-col overflow-hidden rounded-lg border border-border bg-elevated transition-colors hover:border-border-strong", selected && "border-accent")} aria-label={`Generation ${gen.model_id}`}>
+      {selectMode && onToggleSelect ? <SelectOverlay checked={selected} onToggle={() => onToggleSelect(gen.id)} label={`Select generation: ${prompt.slice(0, 60) || gen.model_id}`} /> : null}
       <div className="relative w-full overflow-hidden bg-bg" style={{ aspectRatio: aspectRatioStyle(request.aspect_ratio) }}>
         {gen.state === "succeeded" && primary ? (
           outputs.length === 1 ? (
@@ -96,11 +104,11 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
         ) : (
           <div className="absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-muted">{gen.state === "cancelled" ? "Cancelled" : (failure ?? "No output")}</div>
         )}
-        <div className="pointer-events-none absolute top-2 left-2 flex flex-wrap gap-1">
+        <div className={cn("pointer-events-none absolute top-2 flex flex-wrap gap-1", selectMode ? "left-11" : "left-2")}>
           <StateBadge state={gen.state} />
           <ProviderBadge provider={gen.provider} />
         </div>
-        {!terminal ? (
+        {!terminal && !selectMode ? (
           <Button size="xs" variant="danger" className="absolute top-2 right-2" onClick={() => cancel.mutate()} loading={cancel.isPending} aria-label="Cancel generation">
             <Ban className="size-3" aria-hidden /> Cancel
           </Button>
@@ -145,6 +153,11 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
               <Download className="size-3.5" aria-hidden />
             </a>
           ) : null}
+          {onDelete ? (
+            <Button icon size="sm" variant="ghost" title={terminal ? "Delete" : "Cancel it first to delete"} aria-label="Delete generation" disabled={!terminal} onClick={() => onDelete(gen)} className="hover:text-danger">
+              <Trash2 className="size-3.5" aria-hidden />
+            </Button>
+          ) : null}
           <Link href={`/generations/${gen.id}`} title="Open details" aria-label="Open details" className="ml-auto inline-flex size-7 items-center justify-center rounded-sm text-muted hover:bg-hover hover:text-fg">
             <Maximize2 className="size-3.5" aria-hidden />
           </Link>
@@ -157,6 +170,15 @@ export function GenerationCard({ generation: initial, onReuse, onUseAsReference 
         startIndex={viewer ?? 0}
         caption={prompt}
         detailsHref={`/generations/${gen.id}`}
+        onDelete={
+          onDelete
+            ? () => {
+                setViewer(null);
+                onDelete(gen);
+              }
+            : undefined
+        }
+        deleteLabel="Delete generation"
       />
     </article>
   );

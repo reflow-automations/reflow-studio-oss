@@ -5,11 +5,13 @@
  *   from(table).select(cols).eq().lt().gte().in().or().order().limit().maybeSingle()/.single()
  *   from(table).insert(row).select().single()
  *   from(table).update(patch).eq()[.select().single()]
+ *   from(table).delete().eq().in()[.select()]         (FK on delete cascade / set null applied)
  *   select("*, generations!inner(workspace_id)")      (embedded parent, inner join)
  *   from(table)...is(column, null | true | false)
+ *   from(table)...contains(jsonColumn, value)         (jsonb @> containment)
  *   rpc(fn, args)[.single()/.maybeSingle()]           (the migration 0007 functions, see FakeDatabase.rpc)
  *   auth.admin.getUserById/listUsers/createUser       (with the allowlist + handle_new_user triggers)
- *   storage.from(bucket).upload/createSignedUrl/createSignedUploadUrl/list
+ *   storage.from(bucket).upload/createSignedUrl/createSignedUploadUrl/list/remove
  *
  * Everything outside that subset throws a `FakeSupabaseError` so gaps stay
  * visible instead of silently returning `undefined`. Data-dependent
@@ -67,7 +69,11 @@ export interface QueryResult<T> {
   statusText: string;
 }
 
-export type FakeOp = { table: RelationName; op: "select"; rows: number } | { table: TableName; op: "insert"; rows: Row[] } | { table: TableName; op: "update"; patch: Row; matched: number };
+export type FakeOp =
+  | { table: RelationName; op: "select"; rows: number }
+  | { table: TableName; op: "insert"; rows: Row[] }
+  | { table: TableName; op: "update"; patch: Row; matched: number }
+  | { table: TableName; op: "delete"; ids: unknown[] };
 
 export interface Violation {
   table: TableName;
@@ -291,22 +297,23 @@ const VIEW_COLUMNS: Record<ViewName, readonly string[]> = {
   ledger_balances: ["workspace_id", "spent_usd", "reserved_usd", "budget_usd", "settled_count"],
 };
 
-const FOREIGN_KEYS: ReadonlyArray<{ table: TableName; column: string; ref: TableName }> = [
-  { table: "media_assets", column: "workspace_id", ref: "workspaces" },
-  { table: "media_assets", column: "source_job_id", ref: "generations" },
-  { table: "media_assets", column: "poster_asset_id", ref: "media_assets" },
-  { table: "generations", column: "workspace_id", ref: "workspaces" },
-  { table: "generations", column: "parent_id", ref: "generations" },
-  { table: "generation_outputs", column: "generation_id", ref: "generations" },
-  { table: "generation_outputs", column: "asset_id", ref: "media_assets" },
-  { table: "api_keys", column: "workspace_id", ref: "workspaces" },
-  { table: "ledger_entries", column: "workspace_id", ref: "workspaces" },
-  { table: "ledger_entries", column: "generation_id", ref: "generations" },
-  { table: "provider_events", column: "generation_id", ref: "generations" },
-  { table: "workspace_members", column: "workspace_id", ref: "workspaces" },
-  { table: "shares", column: "workspace_id", ref: "workspaces" },
-  { table: "shares", column: "generation_id", ref: "generations" },
-  { table: "shares", column: "poster_asset_id", ref: "media_assets" },
+/** FK actions mirror the `on delete` clauses in supabase/migrations. */
+const FOREIGN_KEYS: ReadonlyArray<{ table: TableName; column: string; ref: TableName; onDelete: "cascade" | "set null" }> = [
+  { table: "media_assets", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "media_assets", column: "source_job_id", ref: "generations", onDelete: "set null" },
+  { table: "media_assets", column: "poster_asset_id", ref: "media_assets", onDelete: "set null" },
+  { table: "generations", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "generations", column: "parent_id", ref: "generations", onDelete: "set null" },
+  { table: "generation_outputs", column: "generation_id", ref: "generations", onDelete: "cascade" },
+  { table: "generation_outputs", column: "asset_id", ref: "media_assets", onDelete: "set null" },
+  { table: "api_keys", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "ledger_entries", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "ledger_entries", column: "generation_id", ref: "generations", onDelete: "set null" },
+  { table: "provider_events", column: "generation_id", ref: "generations", onDelete: "set null" },
+  { table: "workspace_members", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "shares", column: "workspace_id", ref: "workspaces", onDelete: "cascade" },
+  { table: "shares", column: "generation_id", ref: "generations", onDelete: "cascade" },
+  { table: "shares", column: "poster_asset_id", ref: "media_assets", onDelete: "set null" },
 ];
 
 /** Embedded resources supported in `select("..., relation(cols)")`: child table -> relation name -> parent. */
@@ -360,6 +367,16 @@ function equalsValue(a: unknown, b: unknown): boolean {
   if (isNullish(a) || isNullish(b)) return false;
   if (typeof a === "boolean" || typeof b === "boolean") return String(a) === String(b);
   return compare(a, b) === 0;
+}
+
+/** jsonb `a @> b`: objects contain every key of b, arrays contain every element of b somewhere, scalars are equal. */
+function jsonContains(a: unknown, b: unknown): boolean {
+  if (Array.isArray(b)) return Array.isArray(a) && b.every((item) => a.some((candidate) => jsonContains(candidate, item)));
+  if (b !== null && typeof b === "object") {
+    if (a === null || typeof a !== "object" || Array.isArray(a)) return false;
+    return Object.entries(b as Row).every(([key, value]) => key in (a as Row) && jsonContains((a as Row)[key], value));
+  }
+  return a === b;
 }
 
 function pgError(code: string, message: string, details: string | null = null): PostgrestError {
@@ -701,6 +718,22 @@ export class FakeDatabase {
     return { data: matched.map((r) => structuredClone(r)), error: null };
   }
 
+  /** DELETE matching rows, then apply every FK `on delete` action (cascade recursively, set null). Returns the deleted rows. */
+  deleteRows(table: TableName, filters: Array<(row: Row) => boolean>): { data: Row[]; error: null } {
+    const matched = this.tables[table].filter((row) => filters.every((f) => f(row)));
+    const removed = matched.map((row) => structuredClone(row));
+    this.tables[table] = this.tables[table].filter((row) => !matched.includes(row));
+    this.log.push({ table, op: "delete", ids: matched.map((row) => row.id) });
+    const ids = new Set(matched.map((row) => row.id));
+    for (const fk of FOREIGN_KEYS) {
+      if (fk.ref !== table || ids.size === 0) continue;
+      const references = (row: Row) => !isNullish(row[fk.column]) && ids.has(row[fk.column]);
+      if (fk.onDelete === "cascade") this.deleteRows(fk.table, [references]);
+      else for (const row of this.tables[fk.table]) if (references(row)) row[fk.column] = null;
+    }
+    return { data: removed, error: null };
+  }
+
   private checkConstraints(table: TableName, candidate: Row, pendingSiblings: Row[], self?: Row): PostgrestError | undefined {
     const spec = TABLES[table];
     const others = [...this.tables[table].filter((row) => row !== self), ...pendingSiblings];
@@ -751,7 +784,7 @@ interface Ordering {
 }
 
 class FakeQueryBuilder implements PromiseLike<QueryResult<unknown>> {
-  private mode: "select" | "insert" | "update" | "upsert" = "select";
+  private mode: "select" | "insert" | "update" | "upsert" | "delete" = "select";
   private upsertOptions: { onConflict?: string; ignoreDuplicates?: boolean } | undefined = undefined;
   private payload: Row[] | Row | undefined = undefined;
   private readonly filters: Filter[] = [];
@@ -786,6 +819,13 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<unknown>> {
     this.assertFresh("update");
     this.mode = "update";
     this.payload = patch;
+    return this;
+  }
+
+  delete(): this {
+    this.assertTable("delete");
+    this.assertFresh("delete");
+    this.mode = "delete";
     return this;
   }
 
@@ -826,6 +866,14 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<unknown>> {
   in(column: string, values: unknown[]): this {
     if (!Array.isArray(values)) throw new FakeSupabaseError(`in(${column}) expects an array`);
     this.addFilter(column, "in", (row) => values.some((v) => equalsValue(row[column], v)));
+    return this;
+  }
+
+  /** PostgREST `cs` on a jsonb column (`column @> value`). */
+  contains(column: string, value: unknown): this {
+    if (value === null || typeof value !== "object") throw new FakeSupabaseError(`contains(${column}) is only modelled for jsonb objects and arrays`);
+    const expected = jsonClone(value);
+    this.addFilter(column, "contains", (row) => jsonContains(row[column], expected));
     return this;
   }
 
@@ -957,6 +1005,14 @@ class FakeQueryBuilder implements PromiseLike<QueryResult<unknown>> {
         if (this.ordering.length > 0 || this.limitCount !== undefined) throw new FakeSupabaseError(`order/limit on update ${this.relation} are not modelled`);
         const result = this.db.updateRows(this.relation as TableName, this.payload as Row, this.filters);
         if (result.error) return { data: null, error: result.error, count: null, status: 409, statusText: "Conflict" };
+        if (!this.projection) return this.ok(null);
+        return this.finish(result.data.map((row) => this.project(row, {})));
+      }
+      case "delete": {
+        if (this.ordering.length > 0 || this.limitCount !== undefined) throw new FakeSupabaseError(`order/limit on delete from ${this.relation} are not modelled`);
+        // PostgREST refuses an unfiltered DELETE; so does the fake (a service bug, not data).
+        if (this.filters.length === 0) throw new FakeSupabaseError(`delete from ${this.relation} without a filter`);
+        const result = this.db.deleteRows(this.relation as TableName, this.filters);
         if (!this.projection) return this.ok(null);
         return this.finish(result.data.map((row) => this.project(row, {})));
       }
@@ -1144,6 +1200,10 @@ function toBytes(body: unknown, context: string): Uint8Array {
 
 export class FakeStorage {
   readonly buckets = new Map<string, Map<string, StoredObject>>();
+  /** Every path passed to remove(), in order. */
+  readonly removeCalls: Array<{ bucket: string; path: string }> = [];
+  /** Paths whose remove() answers with an error (simulated outage). */
+  readonly failRemove = new Set<string>();
   private signedCounter = 0;
 
   constructor(readonly now: () => Date) {}
@@ -1201,6 +1261,20 @@ export class FakeStorage {
         }
         files.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
         return { data: files.slice(options.offset ?? 0, (options.offset ?? 0) + (options.limit ?? 100)), error: null };
+      },
+      /** Missing paths are skipped silently (the real API returns only what it removed). */
+      remove: async (paths: string[]) => {
+        if (!Array.isArray(paths)) throw new FakeSupabaseError(`storage.remove() expects an array of paths`);
+        this.removeCalls.push(...paths.map((path) => ({ bucket, path })));
+        if (paths.some((path) => this.failRemove.has(path))) return { data: null, error: { message: "simulated storage failure", statusCode: "500", error: "internal" } };
+        const removed: StorageFileObject[] = [];
+        for (const path of paths) {
+          const object = objects.get(path);
+          if (!object) continue;
+          objects.delete(path);
+          removed.push({ name: path, id: randomUUID(), updated_at: object.updatedAt, created_at: object.createdAt, last_accessed_at: object.updatedAt, metadata: { size: object.bytes.byteLength, mimetype: object.contentType } });
+        }
+        return { data: removed, error: null };
       },
     };
     return strict(api, `storage.from("${bucket}")`);

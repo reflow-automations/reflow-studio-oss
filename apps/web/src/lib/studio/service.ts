@@ -97,8 +97,21 @@ export interface GenerationView {
   outputs: Array<{ index: number; kind: MediaKind; asset_id: string | null; url: string | null; provider_url: string | null; width?: number | null; height?: number | null; duration_seconds?: number | null }>;
 }
 
+/** Outcome of a bulk delete: ids that are gone, and ids left alone with the reason. */
+export interface DeleteResult {
+  deleted: string[];
+  skipped: Array<{ id: string; reason: string }>;
+}
+
+/** Most ids one delete call accepts (matches the REST body limit). */
+export const MAX_DELETE_IDS = 100;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SKIP_NOT_FOUND = "not_found";
+const SKIP_RUNNING = "still running, cancel it first";
+
 const POLL_MIN_INTERVAL_MS = 3_000;
 const NON_TERMINAL: JobState[] = ["pending", "queued", "running"];
+const TERMINAL_STATES: JobState[] = ["succeeded", "failed", "cancelled"];
 const PENDING_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_COPY_BYTES = 500 * 1024 * 1024;
 /** Inline data: outputs (mock placeholders) are small; anything bigger is refused. */
@@ -375,6 +388,150 @@ export class StudioService {
     }
     await this.finalize(row, { state: "cancelled", error: { code: "cancelled", message: "cancelled by user" } });
     return this.getGeneration(id, { workspaceId });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Delete
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Delete finished generations of a workspace, plus the media they produced.
+   * Running jobs are skipped (cancel first). A produced asset that another
+   * generation still uses as an input (by asset id, or by this generation's id,
+   * which resolves to its first output) is kept as a standalone asset. Ledger
+   * rows and provider events stay: their generation_id becomes null (FK), so
+   * spend history is unchanged. Storage objects are removed best-effort.
+   */
+  async deleteGenerations(workspaceId: string, ids: string[]): Promise<DeleteResult> {
+    const { valid, skipped } = this.prepareDeleteIds(ids);
+    if (valid.length === 0) return { deleted: [], skipped };
+
+    const { data: rows, error } = await this.db.from("generations").select("id, state").eq("workspace_id", workspaceId).in("id", valid);
+    if (error) throw new StudioError("provider_error", `could not read generations: ${error.message}`, { status: 500 });
+    const stateById = new Map((rows ?? []).map((r) => [r.id, r.state] as const));
+    const deletable: string[] = [];
+    for (const id of valid) {
+      const state = stateById.get(id);
+      if (state === undefined) skipped.push({ id, reason: SKIP_NOT_FOUND });
+      else if (!isTerminal(state)) skipped.push({ id, reason: SKIP_RUNNING });
+      else deletable.push(id);
+    }
+    if (deletable.length === 0) return { deleted: [], skipped };
+
+    // Media produced by these generations, and which of it must survive.
+    const { data: produced, error: assetError } = await this.db
+      .from("media_assets")
+      .select("id, source_job_id")
+      .eq("workspace_id", workspaceId)
+      .eq("origin", "generated")
+      .in("source_job_id", deletable);
+    if (assetError) throw new StudioError("provider_error", `could not read generated media: ${assetError.message}`, { status: 500 });
+    const keep = await this.referencedAssets(workspaceId, deletable, produced ?? []);
+
+    const { data: removed, error: deleteError } = await this.db.from("generations").delete().eq("workspace_id", workspaceId).in("id", deletable).in("state", TERMINAL_STATES).select("id");
+    if (deleteError) throw new StudioError("provider_error", `could not delete generations: ${deleteError.message}`, { status: 500 });
+    const removedIds = new Set((removed ?? []).map((r) => r.id));
+    for (const id of deletable) if (!removedIds.has(id)) skipped.push({ id, reason: SKIP_NOT_FOUND });
+
+    const assetIds = (produced ?? []).filter((a) => a.source_job_id && removedIds.has(a.source_job_id) && !keep.has(a.id)).map((a) => a.id);
+    if (assetIds.length > 0) {
+      try {
+        await this.deleteAssetRows(workspaceId, assetIds);
+      } catch (err) {
+        // The generations are gone already; leftover assets stay visible under Assets and can be deleted there.
+        console.error("[studio] could not delete generated media", serializeError(err));
+      }
+    }
+    return { deleted: deletable.filter((id) => removedIds.has(id)), skipped };
+  }
+
+  /**
+   * Delete media assets of a workspace and their storage objects (best-effort).
+   * generation_outputs pointing at them keep the provider URL (asset_id becomes null).
+   */
+  async deleteMedia(workspaceId: string, ids: string[]): Promise<DeleteResult> {
+    const { valid, skipped } = this.prepareDeleteIds(ids);
+    if (valid.length === 0) return { deleted: [], skipped };
+    const removed = await this.deleteAssetRows(workspaceId, valid);
+    for (const id of valid) if (!removed.has(id)) skipped.push({ id, reason: SKIP_NOT_FOUND });
+    return { deleted: valid.filter((id) => removed.has(id)), skipped };
+  }
+
+  /** De-duplicate, enforce the batch limit and set aside ids that cannot exist (not uuids). */
+  private prepareDeleteIds(ids: string[]): { valid: string[]; skipped: DeleteResult["skipped"] } {
+    const unique = [...new Set(ids)];
+    if (unique.length > MAX_DELETE_IDS) throw new StudioError("invalid_request", `delete at most ${MAX_DELETE_IDS} items per call`);
+    const skipped: DeleteResult["skipped"] = [];
+    const valid: string[] = [];
+    for (const id of unique) {
+      if (UUID_RE.test(id)) valid.push(id);
+      else skipped.push({ id, reason: SKIP_NOT_FOUND });
+    }
+    return { valid, skipped };
+  }
+
+  /**
+   * Assets among `produced` that a generation outside `deleting` uses as input:
+   * directly by asset id, or through a generation id (which resolves to that
+   * generation's first output, see resolveMedias).
+   */
+  private async referencedAssets(workspaceId: string, deleting: string[], produced: Array<{ id: string; source_job_id: string | null }>): Promise<Set<string>> {
+    const keep = new Set<string>();
+    if (produced.length === 0) return keep;
+    const deletingSet = new Set(deleting);
+    const usedElsewhere = async (value: string): Promise<boolean> => {
+      const { data, error } = await this.db
+        .from("generations")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .contains("request", { medias: [{ value }] })
+        .limit(deleting.length + 1);
+      // Fail safe: when the check cannot run, keep the asset.
+      if (error) return true;
+      return (data ?? []).some((g) => !deletingSet.has(g.id));
+    };
+
+    const generationsWithMedia = [...new Set(produced.map((a) => a.source_job_id).filter((id): id is string => Boolean(id)))];
+    const { data: outputs } = await this.db.from("generation_outputs").select("generation_id, index, asset_id").in("generation_id", generationsWithMedia);
+    const firstOutput = new Map<string, { index: number; asset_id: string | null }>();
+    for (const o of outputs ?? []) {
+      const current = firstOutput.get(o.generation_id);
+      if (!current || o.index < current.index) firstOutput.set(o.generation_id, { index: o.index, asset_id: o.asset_id });
+    }
+
+    const checks: Array<() => Promise<void>> = [
+      ...produced.map((asset) => async () => {
+        if (await usedElsewhere(asset.id)) keep.add(asset.id);
+      }),
+      ...generationsWithMedia.map((generationId) => async () => {
+        const assetId = firstOutput.get(generationId)?.asset_id;
+        if (assetId && (await usedElsewhere(generationId))) keep.add(assetId);
+      }),
+    ];
+    for (let i = 0; i < checks.length; i += 10) await Promise.all(checks.slice(i, i + 10).map((run) => run()));
+    return keep;
+  }
+
+  /** Delete asset rows (workspace-scoped), then their objects best-effort. Returns the ids that were deleted. */
+  private async deleteAssetRows(workspaceId: string, ids: string[]): Promise<Set<string>> {
+    const { data: removed, error } = await this.db.from("media_assets").delete().eq("workspace_id", workspaceId).in("id", ids).select("id, bucket, object_path");
+    if (error) throw new StudioError("provider_error", `could not delete media: ${error.message}`, { status: 500 });
+    await Promise.all(
+      (removed ?? []).map(async (asset) => {
+        if (!asset.object_path) return;
+        const backend = this.storageFor(asset.bucket);
+        if (!backend) {
+          console.warn("[studio] no storage backend for bucket, object left in place", { asset: asset.id, bucket: asset.bucket });
+          return;
+        }
+        try {
+          await backend.delete(asset.bucket, asset.object_path);
+        } catch (err) {
+          console.warn("[studio] could not delete storage object", { asset: asset.id, bucket: asset.bucket, path: asset.object_path, error: serializeError(err).message });
+        }
+      }),
+    );
+    return new Set((removed ?? []).map((a) => a.id));
   }
 
   // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, Play, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export interface MediaViewerItem {
@@ -21,6 +21,10 @@ interface MediaViewerProps {
   caption?: string;
   /** Optional link to the full details page. */
   detailsHref?: string;
+  /** Optional delete action (the caller confirms); shows a trash button in the top bar. */
+  onDelete?: () => void;
+  /** Accessible name of the delete button. */
+  deleteLabel?: string;
 }
 
 /**
@@ -28,7 +32,7 @@ interface MediaViewerProps {
  * (focus trap and Esc for free). Arrow keys step through multiple outputs;
  * clicking the dark backdrop closes it. Videos start playing with controls.
  */
-export function MediaViewer({ open, onClose, items, startIndex = 0, caption, detailsHref }: MediaViewerProps) {
+export function MediaViewer({ open, onClose, items, startIndex = 0, caption, detailsHref, onDelete, deleteLabel }: MediaViewerProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -52,14 +56,14 @@ export function MediaViewer({ open, onClose, items, startIndex = 0, caption, det
       }}
       className="m-0 h-dvh max-h-none w-screen max-w-none bg-black/90 p-0 text-white backdrop:bg-black/80 open:flex open:flex-col"
     >
-      {open && items.length ? <ViewerBody key={startIndex} items={items} startIndex={startIndex} caption={caption} detailsHref={detailsHref} onClose={onClose} /> : null}
+      {open && items.length ? <ViewerBody key={startIndex} items={items} startIndex={startIndex} caption={caption} detailsHref={detailsHref} onClose={onClose} onDelete={onDelete} deleteLabel={deleteLabel} /> : null}
     </dialog>
   );
 }
 
 const control = "inline-flex size-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition-colors hover:bg-black/80 focus-visible:outline-2 focus-visible:outline-accent";
 
-function ViewerBody({ items, startIndex, caption, detailsHref, onClose }: Omit<MediaViewerProps, "open"> & { startIndex: number }) {
+function ViewerBody({ items, startIndex, caption, detailsHref, onClose, onDelete, deleteLabel = "Delete" }: Omit<MediaViewerProps, "open"> & { startIndex: number }) {
   const [index, setIndex] = useState(startIndex);
   const count = items.length;
   const current = items[Math.min(index, count - 1)];
@@ -94,6 +98,11 @@ function ViewerBody({ items, startIndex, caption, detailsHref, onClose }: Omit<M
           <a href={current.url} target="_blank" rel="noreferrer" download className={control} aria-label="Download" title="Download">
             <Download className="size-4" aria-hidden />
           </a>
+          {onDelete ? (
+            <button type="button" onClick={onDelete} className={cn(control, "hover:bg-danger/80")} aria-label={deleteLabel} title={deleteLabel}>
+              <Trash2 className="size-4" aria-hidden />
+            </button>
+          ) : null}
           <button type="button" onClick={onClose} className={control} aria-label="Close" title="Close (Esc)">
             <X className="size-5" aria-hidden />
           </button>

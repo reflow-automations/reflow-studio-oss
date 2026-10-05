@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { StateBadge, ProviderBadge } from "@/components/generations/state-badge";
 import { AdjustmentsHint, asAdjustments } from "@/components/generations/adjustments-hint";
 import { aspectRatioStyle, errorText } from "@/components/generations/generation-format";
-import { AutoRefresh, RerunButton } from "@/components/generations/generation-detail-actions";
+import { AutoRefresh, DeleteGenerationButton, RerunButton } from "@/components/generations/generation-detail-actions";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -40,6 +40,7 @@ export function GenerationDetail({ generation: gen }: { generation: GenerationVi
         </div>
         <div className="flex items-center gap-2">
           <AutoRefresh active={!terminal} />
+          <DeleteGenerationButton generation={gen} />
           <RerunButton generation={gen} />
         </div>
       </div>
